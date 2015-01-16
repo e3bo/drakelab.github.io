@@ -1,0 +1,22 @@
+# Dependencies
+markdown:         redcarpet
+highlighter:      pygments
+
+# Permalinks
+permalink:        pretty
+relative_permalinks: true
+
+# Setup
+title:            Drake Lab Blog
+tagline:          'This is our lab blog'
+description:      'We are a group of population and disease ecologists in the Odum School of Ecology at University of Georgia.'
+baseurl:          /
+
+
+paginate:         5
+
+# Custom vars
+version:          1.0.1
+
+github:
+  repo:           https://github.com/DrakeLab

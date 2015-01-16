@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+ <title>Drake Lab Blog</title>
+ <link href="/atom.xml" rel="self"/>
+ <link href="/"/>
+ <updated>2015-01-15T14:35:42-05:00</updated>
+ <id></id>
+ <author>
+   <name></name>
+   <email></email>
+ </author>
+
+ 
+ <entry>
+   <title>Welcome to the Drake Lab blog!</title>
+   <link href="/2015/01/10/first-post/"/>
+   <updated>2015-01-10T00:00:00-05:00</updated>
+   <id>/2015/01/10/first-post</id>
+   <content type="html">&lt;div class=&quot;message&quot;&gt;
+    &lt;i class=&quot;fa fa-flask fa-5x&quot;&gt; &lt;/i&gt; 
+This is the first official post of the Drake lab blog! We are a mixed groups of disease, population, and community ecologists all sharing a similar love of computers and the computational fruits they can offer. Posts on this blog will center on problems that we've encountered, and how we overcame them, as a means to communicate how others can bypass our mistakes. 
+&lt;/div&gt;
+</content>
+ </entry>
+ 
+
+</feed>
