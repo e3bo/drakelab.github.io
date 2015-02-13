@@ -1,0 +1,38 @@
+---
+layout: post
+title: How we set up our blog
+author: tad
+tags:
+- Markdown
+- R-Jekyll
+---
+
+## The Problem
+John tasked me with setting up the lab blog. I've noticed that all [the](http://www.carlboettiger.info/) [cool](http://scottchamberlain.info/) [kids](http://www.fromthebottomoftheheap.net/) use Jekyll, and it seems pretty user friendly, so we decided on it. 
+
+The problem then became setting the site up, and allowing posts to be created in R markdown, such that `code` snippets could be run and dynamically rendered.
+
+## Why this is a problem (not trivial)
+
+Lots of folks and labs host blogs, and many of these blogs might be considering switching platforms. This is a demonstration that it's pretty easy to switch over, especially if you want to write your posts in R markdown. 
+
+## What I did
+
+This section shouldn't be labeled what _I_ did, but instead what _other folks_ did. The Jekyll online community is pretty sizeable, and the answers to many issues have already been documented. The issue of blog post creation in R markdown format is one instance, as it was previously solved in [this helpful post](http://www.jonzelner.net/jekyll/knitr/r/2014/07/02/autogen-knitr/). 
+
+
+## How you can do it, too
+
+
+
+
+
+{% highlight r %}
+poisson=rpois(5000, 4)
+hist(poisson, col='dodgerblue1', las=1, tck=0.01, main='')
+{% endhighlight %}
+
+![center](/../figs/2015-1-12-Setting-Up/unnamed-chunk-1.png) 
+
+
+

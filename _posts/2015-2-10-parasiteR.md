@@ -1,0 +1,92 @@
+---
+layout: post
+title: Accessing online helminth data through R
+author: tad
+tags:
+- Parasites
+- rvest
+---
+
+## The Problem
+
+Data are everywhere, right? There are repositories like [Dryad](http://datadryad.org/), and more journals are implementing open-data policies. However, some databases don't have a `download` button, and getting the data off the browser and into R can be a pain. However, these data may contribute to the development and testing of general ecological theory. For the longest time, I thought that the extraction of these online data would require another set of tools separate from `R`. This is not the case.
+
+
+## The solution
+
+Thankfully, there are some very smart people designing ways to use R to extract information from webpages. I will focus on [**rvest**](https://github.com/hadley/rvest), and how I used this package to ha**rvest** data on helminth parasites from the London Natural History Museum's [helminth database](http://www.nhm.ac.uk/research-curation/scientific-resources/taxonomy-systematics/host-parasites/index.html). 
+
+The package is called `parasiteR`, and is currently hosted by the [ROpenSci folks](http://ropensci.org/). The package presently has 3 main functions, with a few more on the way. These core functions obtain host-parasite interaction data based on information on host (`findHost()`), parasite (`findParasite()`), or location (`findLocation()`). 
+
+I'll start with an example. The code below finds all host parasite associations for _Gorilla gorilla_.
+
+
+{% highlight r %}
+#Install the package
+#devtools::install_github('ropensci/parasiteR')
+
+library(parasiteR)
+{% endhighlight %}
+
+
+
+{% highlight text %}
+## Error: there is no package called 'parasiteR'
+{% endhighlight %}
+
+
+
+{% highlight r %}
+gorillaParasites=findHost('Gorilla', 'gorilla')
+{% endhighlight %}
+
+
+
+{% highlight text %}
+## Error: could not find function "findHost"
+{% endhighlight %}
+
+
+
+{% highlight r %}
+head(gorillaParasites)
+{% endhighlight %}
+
+
+
+{% highlight text %}
+## Error: object 'gorillaParasites' not found
+{% endhighlight %}
+
+<img src="http://www.theanimalfiles.com/images/western_gorilla_3.jpg"  height="300" width="400"></img>
+
+Now we have a list of parasites recorded on _G. gorilla_. How did we get there? Really easily.
+
+First, we have to get the appropriate `url`. We do this by inserting the host genus and species into the appropriate spots on the `url`, and then pulling that html object into R.  
+
+
+{% highlight r %}
+ hpUrl <- html(paste("http://www.nhm.ac.uk/research-curation/scientific-resources/taxonomy-systematics/host-parasites/database/results.jsp?dbfnsRowsPerPage=50000&x=13&y=5&paragroup=&fmsubgroup=Starts+with&subgroup=&fmparagenus=Starts+with&paragenus=&fmparaspecies=Starts+with&paraspecies=&fmhostgenus=Contains&hostgenus=", genus, "&fmhostspecies=Contains&hostspecies=", species, "&location=", location, "&hstate=&pstatus=&showparasites=on&showhosts=on&showrefs=on&groupby=parasite&search=Search", sep = ""))
+{% endhighlight %}
+
+Once we have the url, we need to extract the pertinent information. This is where the `rvest` package comes in handy, as we can extract the text (`html_text()`) under certain html tags (`.searchlink`).  
+
+
+{% highlight r %}
+ names <- hpUrl %>%
+					html_nodes(".searchlink") %>% 
+					html_text()
+{% endhighlight %}
+
+
+After a bit more formatting, we have a matrix of host-parasite associations. This is a simple application of `rvest`, and `parasiteR` uses only a tiny bit of the functionality of `rvest`. In the coming months, I plan to incorporate some data formatting and plotting functions, but the core functionality of the package is there. 
+
+
+Feel free to check out and contribute to [parasiteR](www.github.com/ropensci/parasiteR).
+
+
+
+
+
+
+

@@ -84,4 +84,4 @@ library(animation)
 output <- saveGIF(animate(), movie.name = "animation.gif", img.name = "Rplot", interval=0.1, nmax=1001, ani.width=480, ani.height=480, loop=TRUE, clean=TRUE)
 {% endhighlight %}
 
-<center> <img src='animation.gif'> </img> </center>
+<center> <img src="/../figs/2015-2-13-double-well/animation.gif"> </img> </center>
