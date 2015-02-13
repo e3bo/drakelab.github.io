@@ -1,0 +1,81 @@
+---
+layout: post
+title: Animating the double well potential
+author: john
+tags:
+- data visualization
+- animation
+- dynamical systems
+---
+
+I recently found myself wanting an animation of fluctuations in a double well potential to use in a presentation. The double well potential is a mathematical object from statistical physics -- the classical "ball-and-cups" diagram -- but it's useful for thinking about bistable systems in general. It turns out, this was quite easy to do using the `animation` package in R.
+
+To start, I searched for a simple formula to serve as the potential function and discovered the [Duffing equation](http://physics.ucsc.edu/~peter/115/duffing.pdf), which was previously unfamiliar to me. The equation, $V(x) = -x^2/2 + x^4/4$, is plotted below using the following code snippet.
+
+
+{% highlight r %}
+duffing <- function(x) -x^2/2 + x^4/4
+xi <- seq(-2,2, length=100)
+y <- duffing(xi)
+plot(xi, y, type='l', lwd=2, xlab='x', ylab='V(x)')
+{% endhighlight %}
+
+![center](/../figs/double-well/duffing.png) 
+
+For my illustration, I wanted the potential barrier (the hump in the middle) to be higher and for the potential function itself to be asymmetric. I modified the original equation by multiplying the first term by a constant and adding a third term that is linear in $x$, yielding $W(x) = -2(x^2/2) + x^4/4 + ax = - x^2 + x^4/4 + ax$. My function, with $a=0.1$, looks like this.
+
+
+{% highlight r %}
+W <- function(x, a=0) -2*(x^2/2) + x^4/4 + a*x
+xi <- seq(-2,2, length=100)
+y <-W(xi, a=0.1)
+plot(xi, y, type='l', lwd=2, xlab='x', ylab='W(x)')
+{% endhighlight %}
+
+![center](/../figs/double-well/potential.png) 
+
+To simulate the dynamics of a particle subject to this potential we need to differentiate $W$ and take the negative, yielding $w = 2x - x^3 -a$.
+
+
+{% highlight r %}
+w <- function(x, a=0) 2*x - x^3 - a
+{% endhighlight %}
+
+Next we write a function to solve for the fluctuations using [Euler's method](http://en.wikipedia.org/wiki/Euler%E2%80%93Maruyama_method) for [stochastic differential equations](http://en.wikipedia.org/wiki/Stochastic_differential_equation). Here the standard deviation is arbitrarily set to 0.5 and the time scale is determined by setting $\tau=1$.
+
+
+{% highlight r %}
+euler <- function(x0, a=0, tau=1, sigma=0.5){
+  return(x0 + w(x0, a)*tau + sigma*rnorm(1, mean=0, sd=sqrt(tau)))
+}
+{% endhighlight %}
+
+Now we write a function that can produce an animation through repeated plotting. As written, the function doesn't require any arguments (relevant constants are set in the first five lines of the function). A loop is used to produce 1000 plots, each of which consists of two panels. The top panel is a picture of the potential function with the position of the particle indicated by a point. The bottom panel is a time series showing the last 100 positions. Time is shown on the $y$-axis so that the position of the particle in the two graphs can be aligned.
+
+
+{% highlight r %}
+animate <- function(){
+  a <- 0.1
+  xi <- seq(-2,2, length=100)
+  y <-W(xi, a=a)
+  x <- 1
+  t <- 0
+  for(i in 1:1000){
+    layout(matrix(c(1,2,2,2), nrow=4, ncol=1, byrow = TRUE))
+    par(mar=c(1,4,2,2))
+    plot(xi,W(xi, a=a), type='l', lwd=4, xlab='', ylab='', axes=FALSE)
+    box()
+    
+    t[i+1] <- i
+    x[i+1] <- euler(tail(x,1), a=a, tau=0.1)
+    points(x[i+1], W(x[i+1],a)+0.1, cex=3, pch=21, bg='red')
+    
+    par(mar=c(5,4,0,2))
+    plot(tail(x,100), tail(t,100), type='l', xlab='', ylab='Time', col='red', xlim=c(-2,2))
+  }
+}
+{% endhighlight %}
+
+Finally, this function is called within a code chunk using the `animation` package to produce the individual frames (as bitmap images) and stitch them together.
+
+<video   controls="controls" loop="loop"><source src="/../figs/double-well/animation.ogg" />video of chunk animation</video>
