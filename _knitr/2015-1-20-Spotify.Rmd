@@ -8,7 +8,7 @@ tags:
 ---
 
 
-If I'm in the lab, I most likely have my headphones on. There is [documented evidence of this](https://github.com/taddallas). I remember when Spotify Apps first became a think, and I thought it was really cool that Spotify had an API, so you could query related artists and such pretty easily. This post is about some fun Spotify querying through R!
+If I'm in the lab, I most likely have my headphones on. There is [documented evidence of this](https://github.com/taddallas). I remember when Spotify Apps first became a thing, and I thought it was really cool that Spotify had an API, so you could query related artists and such pretty easily. This post is about some fun Spotify querying in R!
 
 
 ## The problem
@@ -29,6 +29,10 @@ Information on artists can be obtained by using the following base URL.
 
 ```{r eval=FALSE, echo=TRUE}
 https://api.spotify.com/v1/artists/ARTISTID
+```
+
+```{r eval=TRUE, echo=FALSE, message=FALSE}
+library(RCurl); library(jsonlite);
 ```
 
 ARTISTID is the Spotify code for an artist. You can access that code using the `RCurl` and `jsonlite` packages. Below, I access the API using the `getURL` function, and fromJSON parses JSON objects into R. 
@@ -66,11 +70,11 @@ Looks cool. Now let's look at how Nickelback compares.
   awfulBandInfo=fromJSON(getURL(paste("https://api.spotify.com/v1/search?q=", gsub(' ', '+', awfulBand),"&type=artist", sep='')))$artists
  
   awfulPop=awfulBandInfo$items[1,8]
- 	awfulFollowers=unlist(awfulBandInfo$items[,2])[6]
+ 	awfulFollowers=unlist(awfulBandInfo$items[,2])['total1']
 
 	plot(unlist(bandsInfo[,2])[21:40], bandsInfo[,8], ylab='Popularity', xlab='Number of followers', las=1, pch=16, tck=0.01, xlim=c(15000,1100000), ylim=c(45, 90))
 
-	points(awfulFollowers, awfulPop, pch=15, col='red', cex=2)
+	points(awfulFollowers, awfulPop, pch=1, col='red', cex=2)
 	text(1004000, 80, "Nickelback!", col='red', cex=1.5)
 ```
 
@@ -82,14 +86,14 @@ Looks like Nickelback dominates The Mountain Goats, and all of their related art
   KP=fromJSON(getURL(paste("https://api.spotify.com/v1/search?q=", gsub(' ', '+', "Katy Perry"),"&type=artist", sep='')))$artists
  
   kpPop=KP$items[1,8]
- 	kpFollowers=unlist(KP$items[,2])[21]
+ 	kpFollowers=unlist(KP$items[,2])['total1']
 
 	plot(unlist(bandsInfo[,2])[21:40], bandsInfo[,8], ylab='Popularity', xlab='Number of followers', las=1, pch=16, tck=0.01, xlim=c(15000,3500000), ylim=c(45, 90))
 
-	points(awfulFollowers, awfulPop, pch=16, col='red', cex=2)
+	points(awfulFollowers, awfulPop, pch=1, col='red', cex=2)
 	text(1004000, 80, "Nickelback!", col='red', cex=1.5)
 
-	points(kpFollowers, kpPop, pch=16, col='dodgerblue2', cex=2)
+	points(kpFollowers, kpPop, pch=1, col='dodgerblue2', cex=2)
 	text(3000000, 85, "Katy Perry", col='dodgerblue2', cex=1.5)
 ```
 
