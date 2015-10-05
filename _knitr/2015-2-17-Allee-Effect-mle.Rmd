@@ -1,12 +1,246 @@
 ---
 layout: post
-title: Detecting Allee effects with maximum likelihood estimation
-author: reni
+title: Fitting Weibull function using maximum likelihood estimation
+author: Reni
 tags:
 - parameter estimates
 - mle
 ---
 
+## The Question: How can I fit binary data to a Weibull function?
+The Weibull function is commonly used in survival analysis, time to failure, weather forecasting and much more. Generally, the Weibull function, 
+
+$$
+\begin{equation}
+ p = 1-e^{(\frac{-x}{\lambda})^{k}},
+\end{equation}
+$$
+
+is great because it can take on so many shapes and only has 2 parameters: $\lambda$ and $k$. Depending on the application, the parameter estimates have different implications. *(An ecological example is at the bottom the this post)* 
+
+```{r, echo=FALSE, fig.align='center'}
+set.seed(9782435)
+par(mar=c(6,4,1,1))
+#plot simulated data, log transformed with fitted line
+Y<-c(1,2,4,8,16,32,64,128,256,512,1024,2048)
+ltran<-log(Y+1)
+x<-seq(0,2048, by=.1)
+plot(NA, xlim=c(0,7), ylim=c(0,1),ylab='p', xlab='x', xaxt='n')
+axis(1, at=ltran, labels=Y)
+#plot(NA, ylim=c(0,1), xlim=c(0,250))
+#plot weibull line with given parameters
+
+#par.series= k,l
+par.series=matrix(c(0.5,0.5, #black
+                      5,0.5, #red
+                       #green
+                      1.5,1.5,  #blue
+                      5,5), #light blue
+                  nrow=2)
+co<-c(1,2,'darkgreen',4)
+for (i in 1:length(par.series[1,])){
+  k<- par.series[1,i]
+  l<- par.series[2,i]
+  lgy<-1-exp(-(log(x+1)/l)^k)
+lines(lgy~log(x+1), col=co[i], lwd=3) 
+}
+
+text(x=1.25, y=0.9, label='k=0.5', col=1)
+text(x=1.25, y=0.85, label=expression(paste(lambda,'=0.5')), col=1)
+
+text(x=0.25, y=0.92, label='k=5', col=2)
+text(x=.25, y=0.85, label=expression(paste(lambda,'=0.5')), col=2)
+
+
+#text(x=1.8, y=0.4, label='k=0.5, l=5', col=3)
+text(x=2.25, y=0.7, label='k=1.5', col='darkgreen')
+text(x=2.25, y=0.65, label=expression(paste(lambda,'=1.5')), col='darkgreen')
+
+text(x=4.5, y=0.27, label='k=5', col=4)
+text(x=4.5, y=0.2, label=expression(paste(lambda,'=5')), col=4)
+
+#crappy caption
+mtext('Figure 1. The flexibility of the Weibull depends on just 2 parameters. ', side=1, line=4.5, outer=FALSE, adj=0)
+```
+
+## The Solution
+
+I estimated $\lambda$ and $k$ using maximum likelihood in 3 steps:
+
+1. The first step is to determine the distribution of your data. 
+2. Determine parameter estimates via mle
+3. Determine the 95\% confidence interval of the estimates
+
+
+### 1. The data's distribution  
+Here is quick plot of my data:  
+
+```{r, echo=FALSE, fig.align='center'}
+load('AE.Rdata')
+plot(y~x, data=coin)
+```
+
+The data is a series of coin tosses under condition $x$. If an individual toss is a Bernoulli trial with probability $p$ then the convolution of $n$ Bernoulli trials is binomial with $n$ trials each with probability of $p$ . In other words, my data is binary so I will use a binomial distribution for calculating the log likelihood.  The likelihood function: 
+
+$$
+\begin{equation}
+L(p)= L(y|p)= p^{y} (1-p)^{(n-y)},
+\end{equation}
+$$
+
+translated into `R` looks like:
+```{r, tidy=TRUE}
+#a function that calculates the negative log-likelihood based on a binomial distribution 
+#using a single x,y value
+LL1=function(lam,k,x,y){
+  p<-1-exp(-(x/lam)^k)
+  loglik <- -sum(dbinom(y,1,p, log=TRUE)) #change distribution for different kind of data 
+  return(loglik)
+}
+```
+### 2. Parameter Estimates
+Once you've decided the proper distribution for the likelihood function, there are tons of packages and resources for fitting. I used the package `bbmle` and the function `mle2`. I wrote a quick function for this step since I knew I was going to be fitting multiple data sets. 
+
+```{r, tidy=TRUE, warning=FALSE, message=FALSE}
+library(bbmle)
+#Estimate the max. likelihood of binomial distribution
+mle.estimate=function(data, lam.start=1,k.start=1){
+  initial<-list(lam=lam.start,k=k.start)#initial parameters for MLE
+  #Fit MLE
+  model<-mle2(minuslogl=LL1,start=initial, data=data,method='SANN', trace=TRUE)
+  return(model)
+}
+``` 
+If I take the plotted data above, called `coin` and plug it into the function, it will return the model with the estimated parameters. 
+
+```{r}
+#Note the data column names must be 'x' and 'y'
+mle.estimate(coin)
+#save for later
+mle.estimate(coin)->coin.model
+```
+You might want to play around with the initial parameter values just to make sure you're not stuck in a local minimum. The default in the function is to start at a $\lambda$ and $k$ of 1.
+
+```{r}
+#Note the data column names must be 'x' and 'y'
+mle.estimate(coin, lam.start = 5, k.start = 4)
+```
+
+The model doesn't change based on the first parameter estimation, so this is the true minimum. That was painless- but now we need to determine the confidence intervals around the estimates.
+
+
+### 3. Confidence intervals
+This is the tricky part, but once you have working code you can recycle it for all your other projects! Any combination of $\lambda$ and $k$ have a likelihood given the data. All of these combinations can be put together into a grid which will make up the likelihood surface.  So we need to write code that will fill in a value for every box in this plot-
+
+```{r, echo=FALSE, fig.align='center'}
+plot(NA, ylim=c(0,5), xlim=c(0,5), xlab=expression(lambda), ylab='k')
+abline(v=seq(0,5, by=0.5), h=seq(0,5, by=0.5))
+```
+
+The first step would be to calculate the likelihood with different parameter values and our data `coin`. Since we're not using `mle2` or some other function, we need to tweak our likelihood function to take in multiple data points. The tweaked version would look like:
+
+```{r, tidy=TRUE}
+#using multiple x,y values
+LL=function(param,data){
+  param[1]->lam
+  param[2]->k
+  data[[1]]->x
+  data[[2]]->y 
+  p<-1-exp(-(x/lam)^k)
+  loglik <- -sum(dbinom(y,1,p, log=TRUE))
+  return(loglik)
+}
+```
+
+If we wanted to know what the log likelihood is when $\lambda=k=5$ given our data, we could just run:
+
+```{r, tidy=TRUE}
+LL(param=c(5,5), data=coin)
+```
+Plugging in parameter values by hand would be silly. Let's automate it, and save it in grid format. It would also be nice to just set the parameter range and resolution, and the grid size be calculated:
+
+```{r, tidy=TRUE}
+con.plot=function(window,res,data){
+  #name param
+  min.lam<-window[1]
+  max.lam<-window[2]
+  min.k<-window[3]
+  max.k<-window[4]
+  lam.res<-res[1]
+  k.res<-res[2]
+  #grid size
+  lam.seq<-seq(min.lam,max.lam, length.out=lam.res)
+  k.seq<-seq(min.k,max.k, length.out=k.res)
+  #make grid
+  grid<-matrix(NA, nrow=lam.res, ncol=k.res)
+  
+  for(i in 1:lam.res){
+    for(j in 1:k.res){
+      grid[i,j]=LL(c(lam.seq[i],k.seq[j]),data)
+    }
+  } 
+  return(grid)
+}
+```
+
+This function will return a basic matrix like:
+
+```{r, tidy=TRUE}
+con.plot(window=c(0,5,0,5), res=c(5,5), data=coin)->LLgrid
+LLgrid
+```
+
+If we'd like to determine the 95\% CI we just draw a circle around values that are within 1.96 of our model's negative log likelihood `-logLik(coin.model)`. You'll notice the resolution of our grid isn't nearly high enough, and this isn't a great way visualize the results. 
+
+Let's make some fancy plots in `R` by just using the function `image` and `contour`. We can take the output of the grid and plot it as a heat map using `image`, then add a line around the values that fall within the CI using `contour`. Putting it all together the function would be:
+
+```{r, eval=TRUE, tidy=TRUE}
+
+con.plot=function(window,res,data,model,title,  ylim=c(window[3],window[4]),xlim=c(window[1],window[2]), ncol=10){
+  #name param
+  min.lam<-window[1]
+  max.lam<-window[2]
+  min.k<-window[3]
+  max.k<-window[4]
+  lam.res<-res[1]
+  k.res<-res[2]
+  #grid size
+  lam.seq<-seq(min.lam,max.lam, length.out=lam.res)
+  k.seq<-seq(min.k,max.k, length.out=k.res)
+  #make grid
+  grid<-matrix(NA, nrow=lam.res, ncol=k.res)
+  
+  for(i in 1:lam.res){
+    for(j in 1:k.res){
+      grid[i,j]=LL(c(lam.seq[i],k.seq[j]),data)
+    }
+  }
+  #k:y-axis, col
+  #lam: x-axis, row
+  
+  #Calculate where to put 95% CI, 1.96 is based on the Chi-squared distribution
+  CI<--logLik(model)+1.96
+
+    #plot the likelihood surface
+    image(z=grid, x=lam.seq,y=k.seq, col=heat.colors(ncol), xlab=expression(lambda), ylab='k')
+    #Plot contour map with 95% CI
+    contour(x=lam.seq,y=k.seq,z=grid,levels=CI,add=TRUE,drawlabels=FALSE,nlevels=1, col=1, lwd=2)
+    title(main=title) 
+  
+  #add option to save grid
+  invisible(grid)
+}
+
+```
+
+When the function is run, it looks like this:
+
+```{r, tidy=TRUE,fig.align='center'}
+con.plot(window=c(0,5,0,5), res=c(20,20),data=coin, model=coin.model, title='coin data')
+```
+
+
+****
 
 ## The Concept: Allee effect
 Many mechanisms impact the survival of a population. One such mechanism is an Allee effect- or postive density dependence. Simply put, populations grow slower when their aren't enough individuals in the population. Perfect examples are hunting packs where a minimum number is needed to capture prey, or schooling fish which reduce their individual mortality rate by clumping together. Of course the most obvious mechanism leading to an Allee effect is sexual reproduction. A sexually reproducing population needs at least a female and male in a density that they are likely to find eachother after an appropriate amount of searching. 
@@ -16,9 +250,9 @@ Allee effects come in two flavors, weak and strong. A weak effect will just slow
 ## The Question: Is a population subject to an Allee effect?
 As you can imagine, the presence and strength of an Allee effect will change how endangered or nuisance populations would be managed. For this reason, it is important to test for the presence of Allee effects. A strong Allee effect is present if the relationship between probability of establishment and starting population density is sigmoidal. We will fit the experimental survivorship data to a Weibull function.
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, fig.align='center'}
 #plot simulated data, log transformed with fitted line
-par(mar=c(8,3,1,1))
+
 x<-seq(0,100, by=1)
 plot(NA, xlim=c(0,100), ylim=c(0,1),xaxt='n', xlab='Initial Population', ylab='Probability of Establishment')
 axis(1, at=c(0,25,50,75,100))
@@ -37,24 +271,86 @@ for (i in 1:length(par.series[1,])){
   lgy<-1-exp(-(x/l)^k)
 lines(lgy~x, col=i, lwd=3) 
 }
-#crappy caption
-mtext('Figure 1. Caption here explaining ', side=1, line=4.5, outer=FALSE, adj=0)
 ```
 
+## The Approach: Hypothesis testing with the Weibull function
 
-## The Generic Question: How can I fit binary data to a Weibull function?
+The Weibull function is sigmoidal when $k>1$, so an Allee effect is detected when the estimated parameter $k$ and the associated confidence interval is greater than 1. 
 
-The Weibull function can be used to test how a function reaches the upper bound. Is the approach sigmodial or ?
+Let's look at the data named `expdata`:
 
-\Weibull fitting and MLE useful in other situations 
+```{r, echo=FALSE}
 
-## What I did
+plot(y~x, data=expdata, xlab='Initial Population', ylab="Population Establishment", xaxt='n')
 
-      
-```{r echo=TRUE, eval=TRUE}
+Y<-c(1,2,4,8,16,32,64,128,256,512,1024,2048)
+ltran<-log(Y*(1000/75))
+axis(1, at=ltran, labels=Y)
 ```
 
+Following the 3 steps above: 
+
+### The estimated parameter values are:
+```{r,tidy=TRUE}
+mle.estimate(expdata,lam.start = .5,k.start = .5)
+#save for later
+mle.estimate(expdata,lam.start = .5,k.start = .5)-> LL.expdata
+```
+
+Changing the starting parameter value doesn't change the model, so I will save the model output as `LL.expdata`. I can then plot the likelihood surface using `con.plot`
+
+```{r, tidy=TRUE}
+con.plot(window = c(0,10,0,10),res=c(250,250), data=expdata, model=LL.expdata, title='experimental data', n=10)
+```
+
+We can zoom in, bumb up the resolution, and add in the parameter point estimates.
 
 
+```{r, tidy=TRUE}
+con.plot(window = c(4,6,2,10),res=c(500,500), data =expdata, model=LL.expdata, title='experimental data', n=5 )
+points(coef(LL.expdata)[2]~coef(LL.expdata)[1], pch=19)
+```
 
+The $k$ parameter and confidence interval is greater than 1; there is an Allee effect. We can use the parameter point estimates to plot the fitted curve on the data. For this application, the inflection point is important. This is the minimum density needed to escape an Allee effect.  Since I'm interested in this value- I will calculate the 95\% CI of this point instead of the line. You'll notice that the confidence interval is not symmetrical, so just taking the minimum and maximum values won't do. Instead I will sample the inverse of the hessian matrix (think of this as a covariance matrix) assuming a normal distribution. 
 
+```{r Exp:Inflection, warning=FALSE}
+library(numDeriv)
+library(mvtnorm)
+#Calculate range of inflection point based on hessian
+inflection.range.hess=function(model, data){
+  hessian(LL, coef(model),data=data)->hess
+  solve(hess,diag(c(1,1)))->A
+  rmvnorm(1000000,coef(model),A)->sample
+  # the second derivative of the two parameter Weibull function is (aka inflection point):
+  inflect<- function(v){v[1]*((v[2]-1)/v[2])**(1/v[2])}
+  points<- apply(sample,1,inflect)
+  points <- points[!is.na(points)]
+  qnorm(c(0.025,.975),mean=mean(points),sd=sd(points)) -> boundary
+  return(boundary)
+}
+```
+
+Once I have my lower and upper critical threshold I can just add to the plot:
+
+```{r}
+plot(y~x, data=expdata, xlab='Initial Population', ylab="Population Establishment", xaxt='n')
+
+Y<-c(1,2,4,8,16,32,64,128,256,512,1024,2048)
+ltran<-log(Y*(1000/75))
+axis(1, at=ltran, labels=Y)
+
+#plot weibull line with given parameters
+k<- coef(LL.expdata)[2]
+l<- coef(LL.expdata)[1]
+x<-seq(0,10, by=0.1)
+lgy<-1-exp(-((x)/l)^k)
+lines(lgy~x, col='red') 
+#add inflection point
+l*(((k-1)/k)^(1/k))->zpi
+yi<-1-exp(-((zpi)/l)^k)
+points(yi~zpi, pch=19, col='red')
+
+#add the range of inflection point based on the parameter estimate's confidence interval. 
+inflection.range.hess(LL.expdata, expdata)->inflect.boundry
+abline(v=inflect.boundry, col='orangered')
+```
