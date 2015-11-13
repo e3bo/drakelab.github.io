@@ -1,0 +1,145 @@
+---
+layout: post
+title: How to use Docker to archive the software environment for a computational research project
+author: eamon
+tags:
+- reproducible research
+---
+
+Docker is a software platform that facilitates the development and
+sharing of applications as self-contained units called containers. A
+container is similar to a virtual machine, but typically requires less
+space because a container shares more resources with the operating
+system that is running it. You can find an introduction to the design
+of Docker along with several tutorials on learning to use it at the
+[project's official site](https://www.docker.com/). However, although
+articles about how Docker for reproducible research are becoming more
+common, I've not seen yet seen some one describe in detail how you
+might use it to archive the work associated with a
+publication. Clearly there is more than one way to do it, and my
+process is still far from perfection, but in my estimation the steps I
+will describe could increase the reproducibility of most computational
+research projects. While the same goals could probably be achieved
+without Docker, I think Docker does have broad applicability, can be
+learned and used with reasonable time investments, and is one of the
+more well-supported projects of its kind at the moment. For the
+purpose of being explicit and staying within the realm of my
+experience, I will refer to Docker and other specific projects in this
+post and readers who would like to substitute in other tools should
+feel free to do so.
+
+# The vision
+
+Alice is looking at the figures in one of my papers, and wonders how
+the results would look if I had run the simulations with different
+parameters. She goes to the Methods section and sees that I've
+archived the code and data on the web and provided a DOI. She looks up
+the page of the DOI in her browser, and downloads a zip archive with
+all of the code and data needed. From the README in the archive, she
+learns that the figure she was looking at by running the run-scripts,
+if she has Docker installed. She installs Docker, and then runs the
+run-scripts file. This script pulls down a container from a central
+repository and then runs a Makefile within that container that
+produces all of the figures. By looking at the Makefile, Alice sees
+what script produces the figure she's interested in. She edits the
+script to change the parameters, and then runs it again within the
+container to answer her initial question. The time it took her to
+figure all of this out was about 15 minutes.
+
+# The steps
+
+## Step 1: Develop the project's code and documentation
+
+In the ideal situation, you can write a script or set of scripts that
+takes a standardized and documented data set as input and produces the
+exact tables, figures, and text that you will report as results as
+output. A simple Makefile often proves useful for coordinating the
+running of a series of scripts and it also can serve as a succinct
+documentation of the project's organization. When a particular figure
+is a target, for example, someone can look up the sequence of command
+lines used to produce it.
+
+Often, there is some step that is impractical to script but trivial to
+perform interactively. For these steps, detailed instructions should
+written down, and helpful references to the instructions can even be
+printed out by commands in the Makefile.
+
+## Step 2: Obtain an image for starting your container
+
+In this step, you will create a Dockerfile that produces a Docker
+image with all of the programs and libraries needed to run your
+project's code. Such an image can be thought of as a snapshot of a
+container's state. Even if you find an existing Dockerfile and image
+that has everything you need on Docker Hub, it may make sense to
+create your own version of it so that you can prevent the image stored
+on Docker Hub from being replaced with an updated version. Any updates
+can cause your code to produce different results and defeat the
+purpose of archiving the software environment. You can find a tutorial
+on how to create Dockerfiles and use Docker Hub on the Docker
+website. Conceptually, a Dockerfile is similar to a Makefile and it
+describes how to build a Docker image.
+
+This step can be done in parallel with Step 1. In fact, that may be
+preferred because then you will not need to install software to your
+computers that will just be used for one project. At any rate, when
+this step is done your code should include a top-level script that
+starts a container from the project's image and launches all of the
+scripts needed to reproduce the results.
+
+## Step 3: Put your code and documentation on GitHub
+
+GitHub.com is a website that provides a webapp interface and hosting
+for git version control systems. It has the advantage of a large user
+base, and also offers two features that we will use in Steps 4 and
+5. Many tutorials are available at github.com. Like Step 2, there also
+may be benefits to doing this at the same time as Step 1.
+
+## Step 4: Put your Docker container on Docker Hub
+
+This step can be done by a simple docker push command. However, often
+it would probably be better to use the automated builds feature of
+Docker Hub. This can be set up by linking your Docker Hub account with
+your GitHub account, and then setting up a build on Docker Hub that is
+based on a Dockerfile in one of your GitHub repositories. By using
+this feature, it is easier to keep the image available on Docker Hub
+up-to-date with your project's Dockefile. It also gives potential
+users more confidence that the Docker image you have shared does not
+contain malicious code. By the way, like any other application, you
+should only run Docker containers with origins that you trust on your
+system.
+
+## Step 5: Archive your code and documentation on Zenodo
+
+This step requires a free account at zenodo.org that is linked to your
+GitHub account. At the zenodo website, you can create a record that is
+associated with a GitHub repository. Then when you create a new
+release at the repository's page at GitHub, the zip archive containing
+files for the release will be stored at zenodo.org and associated with
+a digital object identifier (DOI). This DOI can be included in your
+manuscript to permit a persistent reference to the associated software
+and documentation.
+
+Although the output of all of your scripts likely includes large
+binaries which are not well-suited to storage in git, you can put the
+output in a zip archive post it as an attachment on the page of your
+release at github. That zip archive will not be copied over to zenodo,
+but I suppose you could create a separate zenodo record for the output
+if it was important for your project.
+
+# Final notes
+
+Examples of projects where I'm using these steps are
+[here](http://github.com/e3bo/2015pedv) and
+[here](http://github.com/e3bo/2015phylo). I have not yet heard from anyone
+who has found the extra work I've put into archiving the software
+environment useful yet, but I have found that following these steps
+does not take too much of my time and also makes it easier to pick up
+a project that has been set aside for a few months. Another benefit is
+that I can develop the code on an old laptop and do large-scale runs
+on much faster shared machine after simply pulling the required image
+onto the fast machine. In the past, I have spent hours installing all
+of the needed software on the faster machine, and probably did not
+have the software versions matched exactly between machines. These
+benefits have made me pretty happy with this system but I would
+welcome any constructive criticism on the both the choice of tools and
+the overall design of this system.
